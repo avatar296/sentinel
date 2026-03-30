@@ -43,3 +43,16 @@ mlruns/
 
 # Kaggle data
 data/kaggle/*.csv
+data/kaggle/*.zip
+
+# BentoML
+bentoml/
+
+# Streamlit
+.streamlit/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated figures
+docs/figures/*.png

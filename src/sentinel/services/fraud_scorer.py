@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
-from sentinel.ml.features import build_features
 from sentinel.services.model_registry import ModelRegistry
 
 
@@ -22,8 +22,7 @@ class FraudScorer:
         if not self.registry.has_models():
             return self._heuristic(transaction)
 
-        df = pd.DataFrame([transaction])
-        features = build_features(df)
+        features = self._extract_features(transaction)
 
         if self.mode == "ensemble":
             return self.registry.score_ensemble(features)
@@ -34,8 +33,7 @@ class FraudScorer:
         if not self.registry.has_models():
             return {"heuristic": self._heuristic(transaction)}
 
-        df = pd.DataFrame([transaction])
-        features = build_features(df)
+        features = self._extract_features(transaction)
         return self.registry.score_all(features)
 
     def get_model_name(self) -> str:
@@ -45,6 +43,30 @@ class FraudScorer:
         if self.mode == "ensemble":
             return "ensemble"
         return self.registry.get_champion_model_name() or "unknown"
+
+    @staticmethod
+    def _extract_features(transaction: dict) -> pd.DataFrame:
+        """Build feature vector matching the trained model's expected input.
+
+        The BentoML models were trained on V1-V28 + Amount_log + Time_hour.
+        For API transactions (which don't have PCA features), we build a
+        zero-padded feature vector and let the model do its best. In production
+        you'd have the real PCA pipeline here.
+        """
+        amount = float(transaction.get("amount", 0))
+        txn_time = transaction.get("transaction_time", "")
+
+        hour = 12.0  # default
+        if txn_time:
+            try:
+                hour = float(pd.to_datetime(txn_time).hour)
+            except Exception:
+                pass
+
+        row = {f"V{i}": 0.0 for i in range(1, 29)}
+        row["Amount_log"] = float(np.log1p(amount))
+        row["Time_hour"] = hour
+        return pd.DataFrame([row])
 
     @staticmethod
     def _heuristic(transaction: dict) -> float:
