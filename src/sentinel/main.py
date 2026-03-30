@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from sentinel.api.router import api_router
 from sentinel.config import settings
+from sentinel.services.drift_detector import DriftDetector
 from sentinel.services.fraud_scorer import FraudScorer
 from sentinel.services.model_registry import ModelRegistry
 from sentinel.services.velocity_tracker import VelocityTracker
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
     app.state.registry = registry
     app.state.scorer = FraudScorer(registry, mode=settings.SCORING_MODE)
     app.state.tracker = VelocityTracker()
+    app.state.drift_detector = DriftDetector()
     yield
 
 

@@ -19,11 +19,13 @@ async def submit_transaction(
 ):
     scorer = request.app.state.scorer
     tracker = request.app.state.tracker
+    drift_detector = request.app.state.drift_detector
     txn = await transaction_service.create_transaction(
         db,
         data,
         scorer,
         tracker=tracker,
+        drift_detector=drift_detector,
         fraud_threshold=settings.FRAUD_THRESHOLD,
         review_threshold=settings.REVIEW_THRESHOLD,
         rules_threshold=settings.RULES_THRESHOLD,

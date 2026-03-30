@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sentinel.models.transaction import Transaction
 from sentinel.schemas.transaction import TransactionCreate
+from sentinel.services.drift_detector import DriftDetector
 from sentinel.services.escalation import route
 from sentinel.services.fraud_scorer import FraudScorer
 from sentinel.services.rules_engine import evaluate_rules
@@ -16,6 +17,7 @@ async def create_transaction(
     data: TransactionCreate,
     scorer: FraudScorer,
     tracker: VelocityTracker | None = None,
+    drift_detector: DriftDetector | None = None,
     fraud_threshold: float = 0.8,
     review_threshold: float = 0.4,
     rules_threshold: float = 0.5,
@@ -52,6 +54,10 @@ async def create_transaction(
     # Record in velocity tracker after successful commit
     if tracker is not None:
         tracker.record(data.card_last_four, data.location_country)
+
+    # Record score for drift detection
+    if drift_detector is not None:
+        drift_detector.record(fraud_score)
 
     return txn
 

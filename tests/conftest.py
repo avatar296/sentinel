@@ -4,6 +4,7 @@ from httpx import ASGITransport, AsyncClient
 from sentinel.main import app
 from sentinel.services.fraud_scorer import FraudScorer
 from sentinel.services.model_registry import ModelRegistry
+from sentinel.services.drift_detector import DriftDetector
 from sentinel.services.velocity_tracker import VelocityTracker
 
 
@@ -33,6 +34,7 @@ async def client(mock_scorer, mock_registry):
     app.state.registry = mock_registry
     app.state.scorer = mock_scorer
     app.state.tracker = VelocityTracker()
+    app.state.drift_detector = DriftDetector()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

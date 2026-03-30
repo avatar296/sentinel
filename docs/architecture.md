@@ -11,7 +11,6 @@ graph TB
 
     subgraph Training["Training Pipeline"]
         Script["train_all_models.py"]
-        Notebook["model_comparison.ipynb"]
     end
 
     subgraph Serving["Sentinel API  —  FastAPI :8000"]
@@ -21,6 +20,7 @@ graph TB
             TxnAPI["POST /transactions"]
             ReviewAPI["GET /transactions/review-queue"]
             ModelsAPI["/models/*<br/>list · load · remove<br/>promote · compare · mode"]
+            DriftAPI["GET /drift"]
         end
 
         subgraph Core["Scoring Pipeline"]
@@ -32,6 +32,7 @@ graph TB
         subgraph State["App State"]
             Registry["ModelRegistry<br/>(thread-safe)"]
             Velocity["VelocityTracker<br/>(in-memory)"]
+            Drift["DriftDetector<br/>(rolling-window PSI)"]
         end
     end
 
@@ -58,16 +59,15 @@ graph TB
 
     Scorer --> Registry
     Rules --> Velocity
+    Scorer -->|"record(score)"| Drift
+    DriftAPI --> Drift
     ModelsAPI --> Registry
 
     Registry <-->|"load / list"| BentoML
 
     Script -->|"train + evaluate"| MLflow
     Script -->|"save_model()"| BentoML
-    Notebook -->|"train + evaluate"| MLflow
-    Notebook -->|"save_model()"| BentoML
     Script -->|"read"| Kaggle
-    Notebook -->|"read"| Kaggle
 
     Streamlit -->|"read"| Postgres
 
@@ -77,6 +77,7 @@ graph TB
     style Registry fill:#9b59b6,color:#fff
     style BentoML fill:#2ecc71,color:#fff
     style MLflow fill:#1abc9c,color:#fff
+    style Drift fill:#e67e22,color:#fff
 ```
 
 ## Transaction Scoring Flow
@@ -89,6 +90,7 @@ sequenceDiagram
     participant R as Rules Engine
     participant V as VelocityTracker
     participant E as Escalation Router
+    participant D as DriftDetector
     participant DB as PostgreSQL
 
     C->>API: POST /api/v1/transactions
@@ -117,6 +119,7 @@ sequenceDiagram
 
     API->>DB: INSERT transaction<br/>(fraud_score, rules_score, decision, model_used)
     API->>V: record(card, country)
+    API->>D: record(fraud_score)
     API-->>C: 201 TransactionResponse
 ```
 
@@ -172,8 +175,8 @@ flowchart LR
 │  TRAIN            STORE             SERVE            MANAGE     │
 │  ─────            ─────             ─────            ──────     │
 │                                                                 │
-│  Notebook    ──►  BentoML     ──►  ModelRegistry  ◄──  API     │
-│  train.py         Store            (in memory)        Endpoints │
+│  train_all_  ──►  BentoML     ──►  ModelRegistry  ◄──  API     │
+│  models.py        Store            (in memory)        Endpoints │
 │                   (on disk)                                     │
 │       │                │                │                │      │
 │       │                │                │                │      │
