@@ -18,10 +18,26 @@ async def submit_transaction(
     db: AsyncSession = Depends(get_db),
 ):
     scorer = request.app.state.scorer
+    tracker = request.app.state.tracker
     txn = await transaction_service.create_transaction(
-        db, data, scorer, settings.FRAUD_THRESHOLD
+        db,
+        data,
+        scorer,
+        tracker=tracker,
+        fraud_threshold=settings.FRAUD_THRESHOLD,
+        review_threshold=settings.REVIEW_THRESHOLD,
+        rules_threshold=settings.RULES_THRESHOLD,
     )
     return txn
+
+
+@router.get("/review-queue", response_model=list[TransactionResponse])
+async def review_queue(
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    return await transaction_service.list_review_queue(db, limit, offset)
 
 
 @router.get("/{txn_id}", response_model=TransactionResponse)

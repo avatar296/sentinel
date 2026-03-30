@@ -1,27 +1,53 @@
-from pathlib import Path
+from __future__ import annotations
 
-import joblib
 import pandas as pd
 
 from sentinel.ml.features import build_features
+from sentinel.services.model_registry import ModelRegistry
 
 
 class FraudScorer:
-    def __init__(self, model_path: str):
-        if Path(model_path).exists():
-            self.pipeline = joblib.load(model_path)
-        else:
-            self.pipeline = None
+    """Scores transactions using the model registry.
+
+    Supports champion (single best model) and ensemble (average all) modes.
+    Falls back to a heuristic if no models are loaded.
+    """
+
+    def __init__(self, registry: ModelRegistry, mode: str = "champion"):
+        self.registry = registry
+        self.mode = mode  # "champion" or "ensemble"
 
     def score(self, transaction: dict) -> float:
-        if self.pipeline is None:
+        """Primary scoring interface — backward compatible dict -> float."""
+        if not self.registry.has_models():
             return self._heuristic(transaction)
 
         df = pd.DataFrame([transaction])
         features = build_features(df)
-        return float(self.pipeline.predict_proba(features)[0, 1])
 
-    def _heuristic(self, transaction: dict) -> float:
+        if self.mode == "ensemble":
+            return self.registry.score_ensemble(features)
+        return self.registry.score_champion(features)
+
+    def score_all_models(self, transaction: dict) -> dict[str, float]:
+        """Score with every loaded model for comparison."""
+        if not self.registry.has_models():
+            return {"heuristic": self._heuristic(transaction)}
+
+        df = pd.DataFrame([transaction])
+        features = build_features(df)
+        return self.registry.score_all(features)
+
+    def get_model_name(self) -> str:
+        """Return the name of the model used for primary scoring."""
+        if not self.registry.has_models():
+            return "heuristic"
+        if self.mode == "ensemble":
+            return "ensemble"
+        return self.registry.get_champion_model_name() or "unknown"
+
+    @staticmethod
+    def _heuristic(transaction: dict) -> float:
         score = 0.0
         amount = float(transaction.get("amount", 0))
         if amount > 5000:

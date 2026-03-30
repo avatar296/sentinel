@@ -25,4 +25,8 @@ class Transaction(Base):
     is_online: Mapped[bool] = mapped_column(Boolean, nullable=False)
     fraud_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_flagged: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    rules_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    decision_reasons: Mapped[str | None] = mapped_column(String, nullable=True)
+    model_used: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -29,6 +29,10 @@ class TransactionResponse(BaseModel):
     is_online: bool
     fraud_score: float | None
     is_flagged: bool | None
+    rules_score: float | None = None
+    decision: str | None = None
+    decision_reasons: str | None = None
+    model_used: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

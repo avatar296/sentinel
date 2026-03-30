@@ -1,8 +1,14 @@
 from sentinel.services.fraud_scorer import FraudScorer
+from sentinel.services.model_registry import ModelRegistry
+
+
+def _scorer():
+    """Create a FraudScorer with an empty registry (forces heuristic fallback)."""
+    return FraudScorer(ModelRegistry())
 
 
 def test_heuristic_low_risk():
-    scorer = FraudScorer(model_path="nonexistent.joblib")
+    scorer = _scorer()
     score = scorer.score({
         "amount": 50,
         "is_online": False,
@@ -15,7 +21,7 @@ def test_heuristic_low_risk():
 
 
 def test_heuristic_high_risk():
-    scorer = FraudScorer(model_path="nonexistent.joblib")
+    scorer = _scorer()
     score = scorer.score({
         "amount": 8000,
         "is_online": True,
@@ -28,7 +34,7 @@ def test_heuristic_high_risk():
 
 
 def test_heuristic_medium_risk():
-    scorer = FraudScorer(model_path="nonexistent.joblib")
+    scorer = _scorer()
     score = scorer.score({
         "amount": 3000,
         "is_online": False,
